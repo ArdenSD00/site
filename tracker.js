@@ -168,32 +168,43 @@ function canvasFingerprintCard() {
 async function batteryCard() {
   const el = card('Battery', [['Status', '<span class="loading-row"></span>']]);
   grid.appendChild(el);
+  
   try {
-    const bat = await navigator.getBattery();
-    const level = Math.round(bat.level * 100);
-    const charging = bat.charging;
-    const levelColor = level > 50 ? 'green' : level > 20 ? 'amber' : 'red';
+    // Try the modern Battery Status API
+    const battery = await navigator.getBattery?.() || 
+                    await (navigator.battery && Promise.resolve(navigator.battery));
+    
+    if (battery) {
+      const level = Math.round(battery.level * 100);
+      const charging = battery.charging;
+      const levelColor = level > 50 ? 'green' : level > 20 ? 'amber' : 'red';
 
-    const rows = [
-      ['Level', pill(level + '%', levelColor)],
-      ['Charging', charging ? pill('yes', 'green') : pill('no', 'muted')],
-    ];
-    if (!charging && bat.dischargingTime !== Infinity) {
-      const mins = Math.round(bat.dischargingTime / 60);
-      rows.push(['Time left', `${Math.floor(mins / 60)}h ${mins % 60}m`]);
+      const rows = [
+        ['Level', pill(level + '%', levelColor)],
+        ['Charging', charging ? pill('yes', 'green') : pill('no', 'muted')],
+      ];
+      
+      if (!charging && battery.dischargingTime !== Infinity) {
+        const mins = Math.round(battery.dischargingTime / 60);
+        rows.push(['Time left', `${Math.floor(mins / 60)}h ${mins % 60}m`]);
+      }
+
+      el.innerHTML = '';
+      const newCard = card('Battery', rows);
+      el.appendChild(newCard.querySelector('.card-title'));
+      el.appendChild(newCard.querySelector('.rows'));
+    } else {
+      throw new Error('Battery API not available');
     }
-
+  } catch (error) {
     el.innerHTML = '';
-    const newCard = card('Battery', rows);
-    el.appendChild(newCard.querySelector('.card-title'));
-    el.appendChild(newCard.querySelector('.rows'));
-  } catch {
-    el.innerHTML = '';
-    const newCard = card('Battery', [['Status', pill('API unavailable', 'muted')]]);
+    const newCard = card('Battery', [
+      ['Status', pill('Not supported', 'muted')],
+      ['Note', 'Battery API is deprecated in modern browsers for privacy reasons']
+    ]);
     el.appendChild(newCard.querySelector('.card-title'));
     el.appendChild(newCard.querySelector('.rows'));
   }
-  return null;
 }
 
 function audioCard() {
